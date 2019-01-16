@@ -26,7 +26,7 @@ Function Encode(Val SecretKey, Val Payload = Undefined, Val ExtraHeaders = Undef
 	signature = Шифрование.HMAC(
 		GetBinaryDataFromString(SecretKey),
 		GetBinaryDataFromString(stringToSign),
-		HashFunction.SHA256);
+		Строка(HashFunction.SHA256));
 		
 	segments.Add(Base64UrlEncode(signature));
 	
@@ -65,7 +65,7 @@ Function Decode(Val Token, Val SecretKey, Val Verify = True) Export
 		signature = Шифрование.HMAC(
 			GetBinaryDataFromString(SecretKey),
 			GetBinaryDataFromString(header + "." + payload),
-			HashFunction.SHA256);
+			Строка(HashFunction.SHA256));
 			
 		If Base64String(crypto) <> Base64String(signature) Then
 			Raise "JWT.Decode: Invalid signature";
