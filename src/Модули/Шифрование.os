@@ -12,7 +12,6 @@
 // Returns:
 //  BinaryData - The computed hash code
 //
-
 Function HMAC(Val SecretKey, Val Message, Val HashFunc) Export
 
 	CheckHashFuncIsSupported(HashFunc);
@@ -102,7 +101,7 @@ Function BinBitwiseXOR(Val BinaryData1, Val BinaryData2)
 
 EndFunction
 
-Function Hash(Val Value, Val HashFunc) Export
+Function Hash(Val Value, Val HashFunc)
 	DataHashing = New DataHashing(HashFunc);
 	DataHashing.Append(Value);
 	Return DataHashing.HashSum;

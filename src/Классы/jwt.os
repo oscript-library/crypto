@@ -1,5 +1,37 @@
 
-Function Encode(Val SecretKey, Val Payload = Undefined, Val ExtraHeaders = Undefined) Export
+// <Описание функции>
+//
+// Параметры:
+//   СекретныйКлюч - Строка - секретный ключ расшифровки
+//   ДанныеКодирования - Произвольный - произвольные данные для токена
+//   ДополнительныеЗаголовки - Структура - дополнительные заголовки при шифровании токена
+//
+//  Возвращаемое значение:
+//   Строка - токен после кодирования
+//
+Функция Кодировать(Знач СекретныйКлюч, Знач ДанныеКодирования, Знач ДополнительныеЗаголовки = Неопределено) Экспорт 
+	
+	Возврат Encode(СекретныйКлюч, ДанныеКодирования, ДополнительныеЗаголовки);
+
+КонецФункции
+
+// Производит декодирование токена
+//
+// Параметры:
+//   Токен - Строка - строка токена
+//   СекретныйКлюч - Строка - секретный ключ расшифровки
+//   ПроверятьПодпись - Булево - проверяет подпись токена (по умолчанию <Истина>)
+//
+//  Возвращаемое значение:
+//   Произвольный - расшифрованные данные токена
+//
+Функция Декодировать(Знач Токен, Знач СекретныйКлюч, Знач ПроверятьПодпись = Истина) Экспорт 
+	
+	Возврат Decode(Токен, СекретныйКлюч, ПроверятьПодпись);
+
+КонецФункции
+
+Function Encode(Val SecretKey, Val Payload = Undefined, Val ExtraHeaders = Undefined)
 
 	If Payload = Undefined Then
 		Payload = New Structure;
@@ -36,7 +68,7 @@ Function Encode(Val SecretKey, Val Payload = Undefined, Val ExtraHeaders = Undef
 
 EndFunction
 
-Function Decode(Val Token, Val SecretKey, Val Verify = True) Export
+Function Decode(Val Token, Val SecretKey, Val Verify = True)
 
 	parts = StrSplit(Token, ".");
 	If parts.Count() <> 3 Then
@@ -105,7 +137,7 @@ Function Base64UrlDecode(Val input)
 
 EndFunction
 
-Function ComposeJSON(Obj, LineBreak = Undefined) Export
+Function ComposeJSON(Obj, LineBreak = Undefined)
 
 	If Not ЗначениеЗаполнено(Obj) Then
 		Return "";
@@ -123,7 +155,7 @@ Function ComposeJSON(Obj, LineBreak = Undefined) Export
 
 EndFunction
 
-Function ParseJSON(Json) Export
+Function ParseJSON(Json) 
 
 	If НЕ ЗначениеЗаполнено(Json) Then
 		Return Undefined;
