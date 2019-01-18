@@ -4,6 +4,10 @@
 # .tfstate files
 *.tfstate
 *.tfstate.*
-
 # .tfvars files
 *.tfvars
+bdd-log.xml
+tests.xml
+coverage/*
+
+*.ospx
