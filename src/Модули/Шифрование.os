@@ -1,176 +1,118 @@
-// HMAC на встроенном языке 1С - Инфостарт
-// https://infostart.ru/public/591665/
+// Источник https://github.com/pintov/1c-jwt/blob/master/src/Cryptography.bsl
+// Адаптировал vasvl123
+
+// Computes a Hash-based Message Authentication Code (HMAC)
+// RFC 2104 https://www.ietf.org/rfc/rfc2104.txt
 //
-// адаптировано под OneScript vasvl123
-
-
-// Функция - HMAC
+// Parameters:
+//  Key			- BinaryData	- the key to use in the hash algorithm
+//  Message		- BinaryData	- the input to compute the hash code for
+//  HashFunc	- HashFunction	- the name of the hash algorithm to use for hashing
 //
-// Параметры:                            1
-//  K     - ключ    в шестнадцатеричном виде - Строка
-//  text - текстовое сообщение - Строка
-//  Hash - Hash function (CRC32, MD5, SHA1, SHA256) - Строка
-// Возвращаемое значение:
-//     строка HMAC - Строка
-Функция HMAC(Знач K, Знач text, Знач Hash) Экспорт
+// Returns:
+//  BinaryData - The computed hash code
+//
 
-	Перем kResult;
-	Перем К0;
+Function HMAC(Val SecretKey, Val Message, Val HashFunc) Export
 
-	//Если длина ключа K больше размера блока, то к ключу K применяем хэш-функцию
-	Если СтрДлина(K)>128 Тогда
-		K = SHA1(K,Hash);
-	КонецЕсли;
+	CheckHashFuncIsSupported(HashFunc);
 
-	//1 Дополняем ключ K нулевыми байтами до размера блока. Размер блока хэш-функции SHA-1 равен 64 байтам.
-	StringSHA1 = Лев(K,128);
-	Для к = СтрДлина(K) По 128 Цикл
-		StringSHA1 = StringSHA1 + "0";
-	КонецЦикла;
-	К0 = StringSHA1;
+	BlSz = 64;
 
-	//2 Выполняем операцию «побитовое исключающее ИЛИ» c константой 0x36.
-	b = ПреобразоватьЧислоВДвоичнуюСИ(ПреобразоватьHexВДесятичнуюСИ("36"));
+	If SecretKey.Size() > BlSz Then
+		SecretKey = Hash(SecretKey, HashFunc);
+	EndIf;
 
-	к = 1;
-	Пока к < 128 Цикл
-		a             = ПреобразоватьЧислоВДвоичнуюСИ(ПреобразоватьHexВДесятичнуюСИ(Сред(StringSHA1,к,2)));
-		с             = XOR(a,b);
-		StringSHA1     = Лев(StringSHA1,к-1)+с+Прав(StringSHA1, 128-к);
-		к             = к + 2;
-	КонецЦикла;
+	EmptyBin = GetBinaryDataFromString("");
+	SecretKey = BinLeft(SecretKey, BlSz);
 
-	StringSHA1 = Лев(StringSHA1,128);
+	Ê0 = BinRightPad(SecretKey, BlSz, 0); // "0x00"
 
-	//3 Выполняем склейку исходного сообщения со строкой, полученной на шаге 2.
-	Для к = 1 По СтрДлина(text) Цикл
+	ipad = BinRightPad(EmptyBin, BlSz, 54); // "0x36"
+	k_ipad = BinBitwiseXOR(Ê0, ipad);
 
-		StringSHA1 = StringSHA1 + ПреобразоватьДесятичнуюСИВHex(КодСимвола(Сред(text,к,1)));
+	opad = BinRightPad(EmptyBin, BlSz, 92); // "0x5C"
+	k_opad = BinBitwiseXOR(Ê0, opad);
 
-	КонецЦикла;
+	k_ipad_Message = BinConcat(k_ipad, Message);
+	k_opad_Hash = BinConcat(k_opad, Hash(k_ipad_Message, HashFunc));
+	res = Hash(k_opad_Hash, HashFunc);
 
-	//4 Применим хэш-функцию SHA-1 к строке, полученной на прошлом шаге.
-	StringSHA1     = SHA1(StringSHA1,Hash);
-	kResult     = StringSHA1;
+	Return res;
 
-	//5 Выполним операцию «побитовое исключающее ИЛИ» c константой 0x5c.
-	StringSHA1 = К0;
+EndFunction
 
-	b = ПреобразоватьЧислоВДвоичнуюСИ(ПреобразоватьHexВДесятичнуюСИ("5c"));
 
-	к = 1;
-	Пока к < 128 Цикл
-		a             = ПреобразоватьЧислоВДвоичнуюСИ(ПреобразоватьHexВДесятичнуюСИ(Сред(StringSHA1,к,2)));
-		с             = XOR(a,b);
-		StringSHA1     = Лев(StringSHA1,к-1)+с+Прав(StringSHA1, 128-к);
-		к             = к + 2;
-	КонецЦикла;
+Procedure CheckHashFuncIsSupported(HashFunc)
 
-	StringSHA1 = Лев(StringSHA1,128);
+	If HashFunc <> HashFunction.MD5 And	HashFunc <> HashFunction.SHA1 And HashFunc <> HashFunction.SHA256 Then
+		Raise "HMAC: unsupported hash function: " + HashFunc;
+	EndIf;
 
-	//6 Склейка строки, полученной на шаге 4, со строкой, полученной на шаге 5.
-	StringSHA1 = StringSHA1 + kResult;
+EndProcedure
 
-	//7 Применим хэш-функцию SHA-1 к строке, полученной на прошлом шаге.
-	StringSHA1 = SHA1(StringSHA1,Hash);
+Function BinLeft(Val BinaryData, Val CountOfBytes)
 
-	Возврат StringSHA1;
+	Buffer = GetBinaryDataBufferFromBinaryData(BinaryData);
+	If CountOfBytes > Buffer.Size Then
+		CountOfBytes = Buffer.Size;
+	EndIf;
+	Buffer1 = Buffer.Read(0, CountOfBytes);
 
-КонецФункции
+	Return GetBinaryDataFromBinaryDataBuffer(Buffer1);
 
-Функция ПреобразоватьДвоичнуюСтроку(стр)
-	simbol   = СтрДлина(стр);
-	дстр     = Новый БуферДвоичныхДанных(simbol / 2);
-	i = 1;
-	Пока i < simbol Цикл
-		дстр.Установить((i - 1)/ 2, ПреобразоватьHexВДесятичнуюСИ(Сред(стр, i, 2)));
-		i = i + 2;
-	КонецЦикла;
-	Возврат ПолучитьДвоичныеДанныеИзБуфераДвоичныхДанных(дстр);
-КонецФункции
+EndFunction
 
-Функция SHA1(Знач nString, Hash)
-	Хеширование        = Новый ХешированиеДанных(ХешФункция[Hash]);
-	Хеширование.Добавить(ПреобразоватьДвоичнуюСтроку(nString));
-	sign             = Хеширование.ХешСумма;
-	sign 			 = СтрЗаменить(НРЕГ(sign), " ", "");
-	Возврат СтрЗаменить(НРЕГ(sign), " ", "");
-КонецФункции
+Function BinRightPad(Val BinaryData, Val Length, Val PadByte)
 
-Функция ПреобразоватьДесятичнуюСИВHex(Знач int)
-	Если int < 256 Тогда
-		Возврат Прав("00" + ПреобразоватьДесятичнуюСИВОднобайтовыйHex(int),2);
-	Иначе
-		Возврат Прав("0000" + ПреобразоватьДесятичнуюСИВДвухбайтовыйHex(int),4);
-	КонецЕсли;
-КонецФункции
+	Buffer = GetBinaryDataBufferFromBinaryData(BinaryData);
 
-Функция ПреобразоватьHexВДесятичнуюСИ(Знач hex)
-	simbol     = СтрДлина(hex) - 1;
-	dec     = 0;
-	i         = 1;
-	Пока simbol >= 0 Цикл
-		simbolHex     = Сред(hex, i, 1);
-		Res         = Найти("0123456789abcdef", simbolHex) - 1;
-		dec         = dec + Res * Pow(16, simbol);
-		simbol         = simbol - 1;
-		i             = i + 1;
-	КонецЦикла;
-	Возврат dec;
-КонецФункции
+	Buffer1Size = Length - Buffer.Size;
+	Buffer1 = New BinaryDataBuffer(Buffer1Size);
 
-Функция ПреобразоватьЧислоВДвоичнуюСИ(Знач int, rBit = 8)
-	b = "";
-	Для k = 1 По rBit Цикл
-		m     = pow(2, rBit - k);
-		bit = Цел(int / m);
-		int = int - m * bit;
-		b     = b + bit;
-	КонецЦикла;
-	Возврат b;
-КонецФункции
+	For n = 0 To Buffer1Size - 1 Do
+		Buffer1.Set(n, PadByte);
+	EndDo;
 
-Функция XOR(a, b)
-	res = 0;
-	s     = 1;
-	к     = Мин(СтрДлина(a), СтрДлина(b));
-	Пока к > 0 Цикл
-		a1     = Сред(a,к,1);
-		b1     = Сред(b,к,1);
-		res = res + s * ?(a1=b1,0,Макс(a1,b1));
-		s     = s*2;
-		к     = к-1;
-	КонецЦикла;
-	Возврат ПреобразоватьДесятичнуюСИВHex(res);
-КонецФункции
+	Return GetBinaryDataFromBinaryDataBuffer(Buffer.Concat(Buffer1));
 
-Функция ПреобразоватьДесятичнуюСИВДвухбайтовыйHex(Знач int)
-	BinaryData = ПреобразоватьЧислоВДвоичнуюСИ(int, 11);
-	BinaryData = "110" + Лев(BinaryData,5) + "10" + Прав(BinaryData, 6);
-	DecimalData = ПолучитьДесятичноеЧислоИзДвоичного(BinaryData);
-	HexData = ПреобразоватьДесятичнуюСИВОднобайтовыйHex(DecimalData);
-	Возврат HexData;
-КонецФункции
+EndFunction
 
-Функция ПолучитьДесятичноеЧислоИзДвоичного(b)
-	res 	= 0;
-	s     	= 1;
-	к     	= СтрДлина(b);
-	Пока к > 0 Цикл
-		bit   = Сред(b,к,1);
-		res = res + s * bit;
-		s   = s*2;
-		к   = к-1;
-	КонецЦикла;
-	Возврат res;
-КонецФункции
+// такая функция еще не реализована
+Function WriteBitwiseXor(Buffer1, Start, Buffer2, Size)
 
-Функция ПреобразоватьДесятичнуюСИВОднобайтовыйHex(Знач int)
-	hex = "";
-	Пока int <> 0 Цикл
-		p   = int % 16;
-		hex = Сред("0123456789abcdef", p + 1, 1) + hex;
-		int = Цел(int / 16);
-	КонецЦикла;
-	Возврат hex;
-КонецФункции
+	For n = Start To Start + Size - 1 Do
+		Buffer1.Set(n, BitwiseXor(Buffer1.Get(n), Buffer2.Get(n)));
+	EndDo;
+
+EndFunction
+
+Function BinBitwiseXOR(Val BinaryData1, Val BinaryData2)
+
+	Buffer1 = GetBinaryDataBufferFromBinaryData(BinaryData1);
+	Buffer2 = GetBinaryDataBufferFromBinaryData(BinaryData2);
+
+	If Buffer1.Size > Buffer2.Size Then
+		WriteBitwiseXor(Buffer1, 0, Buffer2, Buffer2.Size);
+		Return GetBinaryDataFromBinaryDataBuffer(Buffer1);
+	Else
+		WriteBitwiseXor(Buffer2, 0, Buffer1, Buffer1.Size);
+		Return GetBinaryDataFromBinaryDataBuffer(Buffer2);
+	EndIf;
+
+EndFunction
+
+Function Hash(Val Value, Val HashFunc) Export
+	DataHashing = New DataHashing(HashFunc);
+	DataHashing.Append(Value);
+	Return DataHashing.HashSum;
+EndFunction
+
+Function BinConcat(Val BinaryData1, Val BinaryData2)
+
+	Buffer1 = GetBinaryDataBufferFromBinaryData(BinaryData1);
+	Buffer2 = GetBinaryDataBufferFromBinaryData(BinaryData2);
+
+	Return GetBinaryDataFromBinaryDataBuffer(Buffer1.Concat(Buffer2));
+
+EndFunction

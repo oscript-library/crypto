@@ -23,7 +23,7 @@ Function Encode(Val SecretKey, Val Payload = Undefined, Val ExtraHeaders = Undef
 
 	stringToSign = StrConcat(segments, ".");
 
-	signature = Cryptography.HMAC(
+	signature = Шифрование.HMAC(
 		GetBinaryDataFromString(SecretKey),
 		GetBinaryDataFromString(stringToSign),
 		HashFunction.SHA256);
@@ -62,7 +62,7 @@ Function Decode(Val Token, Val SecretKey, Val Verify = True) Export
 			Raise "JWT.Decode: header doesn't contain field 'alg'";
 		EndIf;
 
-		signature = Cryptography.HMAC(
+		signature = Шифрование.HMAC(
 			GetBinaryDataFromString(SecretKey),
 			GetBinaryDataFromString(header + "." + payload),
 			HashFunction.SHA256);
