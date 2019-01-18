@@ -20,17 +20,17 @@
 Процедура ТестДолжен_ПроверитьРаботуКласса() Экспорт
 
 	jwt = новый jwt;
-	SecretKey = "secret";
-	Payload = New Structure;
-	Payload.Insert("sub", "1234567890");
-	Payload.Insert("name", "John Doe");
-	Payload.Insert("admin", True);
+	КлючШифрования = "secret";
+	ДанныеКлюча = Новый Структура;
+	ДанныеКлюча.Вставить("sub", "1234567890");
+	ДанныеКлюча.Вставить("name", "John Doe");
+	ДанныеКлюча.Вставить("admin", True);
 	
-	Token = jwt.Encode(SecretKey, Payload);
+	Токен = jwt.Encode(КлючШифрования, ДанныеКлюча);
 	
-	DecodedPayload = jwt.Decode(Token, SecretKey);
+	РасшифрованныеДанные = jwt.Decode(Токен, КлючШифрования);
 
-	Сообщить(DecodedPayload.sub);
+	Ожидаем.Что(РасшифрованныеДанные.sub, "Расшифрованные данные sub должны совпадать").Равно(ДанныеКлюча.sub);
 
 КонецПроцедуры
 
